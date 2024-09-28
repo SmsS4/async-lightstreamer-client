@@ -5,9 +5,9 @@ This project is based on [lightstreamer-client](https://github.com/wjszlachta/li
 
 # Install
 ```bash
-pip install async-lightstreamer-client
+pip install async-lightstreamer 
 # or if you are using poetry
-poetry add async-lightstreamer-client
+poetry add async-lightstreamer 
 ```
 
 # Task Group
