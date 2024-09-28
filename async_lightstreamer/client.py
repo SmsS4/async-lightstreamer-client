@@ -232,12 +232,16 @@ class LightstreamerClient:
     async def reconnect(self) -> None:
         i = self._reconnect_retires
         self._session_id = None
-        await self.disconnect()
-        while i > 0:
+        while i != 0:
             self.logger.info("reconnecting attempt %d", self._reconnect_retires - i + 1)
+            try:
+                await self.disconnect()
+            except Exception as e:
+                self.logger.error("failed to disconnect %s", e)
             self._metrics.reconnect_count += 1
             if await self._try_reconnect():
                 break
+            i -= 1
 
     async def _control(self, params: Dict) -> str:
         """
