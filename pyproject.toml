@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "async-lightstreamer"
-version = "0.1.3"
+version = "0.1.4"
 description = ""
 authors = ["Seyed Mahdi Sadegh Shobeiri <smss.lite@gmail.com>"]
 readme = "README.md"

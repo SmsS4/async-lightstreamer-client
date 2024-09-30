@@ -376,7 +376,6 @@ class LightstreamerClient:
                 self.logger.debug("Binding to this active session")
                 await self.bind()
         except Exception as e:
-            if not self._reconnect:
-                self.logger.error("receiving failed with exception %s", e)
-                raise e
+            self.logger.error("receiving failed with exception %s", e)
+        if self._reconnect:
             await self.reconnect()
