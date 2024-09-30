@@ -128,7 +128,7 @@ class LightstreamerClient:
         self.logger.info("Bound to <%s>", self._control_address.geturl())
         self._metrics.binds_count += 1
 
-    async def disconnect(self) -> None:
+    async def disconnect(self, cancel_task: bool = True) -> None:
         """Request to close the session previously opened with the connect() invocation."""
 
         if self._stream is not None:
@@ -136,7 +136,7 @@ class LightstreamerClient:
                 "Closing session to <%s>", self._lightstreamer_url.geturl()
             )
             await self._control({"LS_op": OP_DESTROY})
-            if self._task:
+            if self._task and cancel_task:
                 self._task.cancel()
                 try:
                     await self._task
@@ -235,7 +235,7 @@ class LightstreamerClient:
         while i != 0:
             self.logger.info("reconnecting attempt %d", self._reconnect_retires - i + 1)
             try:
-                await self.disconnect()
+                await self.disconnect(cancel_task=False)
             except Exception as e:
                 self.logger.error("failed to disconnect %s", e)
             self._metrics.reconnect_count += 1
@@ -292,9 +292,9 @@ class LightstreamerClient:
                     break
 
             if self._task_group:
-                self._task_group.create_task(self._receive())
+                self._task = self._task_group.create_task(self._receive())
             else:
-                asyncio.create_task(self._receive())
+                self._task = asyncio.create_task(self._receive())
 
         else:
             self.logger.error("server response error %s", stream_line)
