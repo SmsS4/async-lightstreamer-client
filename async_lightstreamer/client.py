@@ -111,8 +111,15 @@ class LightstreamerClient:
             "LS_password": self._lightstreamer_password,
         }
         url = parse.urljoin(self._lightstreamer_url.geturl(), CONNECTION_URL_PATH)
-        self._stream_session = aiohttp.ClientSession(raise_for_status=True)
-        self._stream = await self._stream_session.post(url, data=params)  # type: ignore
+        self._stream_session = aiohttp.ClientSession(
+            raise_for_status=True,
+            timeout=aiohttp.ClientTimeout(total=None),
+        )
+        self._stream = await self._stream_session.post(
+            url,
+            data=params,
+            timeout=aiohttp.ClientTimeout(total=None),
+        )  # type: ignore
         await self._handle_connection_stream()
         self._metrics.connected = True
 
@@ -122,8 +129,15 @@ class LightstreamerClient:
         await self._close_stream()
         params = {"LS_session": self._session_id}
         url = parse.urljoin(self._control_address.geturl(), BIND_URL_PATH)
-        self._stream_session = aiohttp.ClientSession(raise_for_status=True)
-        self._stream = await self._stream_session.post(url, data=params)  # type: ignore
+        self._stream_session = aiohttp.ClientSession(
+            raise_for_status=True,
+            timeout=aiohttp.ClientTimeout(total=None),
+        )
+        self._stream = await self._stream_session.post(
+            url,
+            data=params,
+            timeout=aiohttp.ClientTimeout(total=None),
+        )  # type: ignore
         await self._handle_connection_stream()
         self.logger.info("Bound to <%s>", self._control_address.geturl())
         self._metrics.binds_count += 1
@@ -251,9 +265,10 @@ class LightstreamerClient:
             raise exceptions.LightstreamerNotConnected()
         params["LS_session"] = self._session_id
         url = parse.urljoin(self._control_address.geturl(), CONTROL_URL_PATH)
-        async with aiohttp.ClientSession(
-            raise_for_status=True
-        ) as session, session.post(url=url, data=params) as response:
+        async with (
+            aiohttp.ClientSession(raise_for_status=True) as session,
+            session.post(url=url, data=params) as response,
+        ):
             decoded_response = (await response.text()).rstrip()
         self.logger.debug("Server response: <%s>", decoded_response)
         return decoded_response
@@ -266,6 +281,7 @@ class LightstreamerClient:
             self.logger.warning("Failed to close stream: %s", e)
 
     async def _next_line(self) -> str:
+        # TODO: add timeout
         if self._stream is None:
             raise exceptions.LightstreamerNotConnected()
         return (await self._stream.content.readline()).decode("utf-8").rstrip()
