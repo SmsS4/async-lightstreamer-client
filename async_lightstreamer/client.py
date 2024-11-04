@@ -86,6 +86,7 @@ class LightstreamerClient:
         self._subscriptions: Dict[int, subscription.LightstreamerSubscription] = {}
         self._task: asyncio.Task | None = None
         self._metrics = Metrics()
+        self._can_reconnect = True
 
     def metrics(self) -> Metrics:
         """
@@ -241,7 +242,7 @@ class LightstreamerClient:
             self.logger.error("connection failed %s", e)
             return False
         try:
-            for key, sub in self._subscriptions.items():
+            for key, sub in self._subscriptions.copy().items():
                 await self.subscribe(sub, key)
         except Exception as e:
             self.logger.error("subscribe failed %s", e)
@@ -261,6 +262,8 @@ class LightstreamerClient:
             if await self._try_reconnect():
                 break
             i -= 1
+        self._can_reconnect = True
+
 
     async def _control(self, params: Dict) -> str:
         """
@@ -398,5 +401,8 @@ class LightstreamerClient:
                 await self.bind()
         except Exception as e:
             self.logger.error("receiving failed with exception %s", e)
-        if self._reconnect:
+        # TODO: fix
+        # There is a bug where sub fails and we have two task 
+        if self._reconnect and self._can_reconnect:
+            self._can_reconnect = False
             await self.reconnect()
