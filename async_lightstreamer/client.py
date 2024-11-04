@@ -165,6 +165,7 @@ class LightstreamerClient:
     async def subscribe(
         self,
         subscription: subscription.LightstreamerSubscription,
+        subscription_key: int | None = None,
     ) -> int:
         """
         Perform a subscription request to Lightstreamer Server.
@@ -173,20 +174,24 @@ class LightstreamerClient:
         Args:
             subscription (subscription.LightstreamerSubscription):
                 subscription object contains, mode, fields, and ...
+            key (int | None): key of subscription. Defaults to None
+                if None use autoincrement id
 
         Returns:
             int: subscription key for unsubscribing
         """
 
         # register the Subscription with a new subscription key
-        self._current_subscription_key += 1
-        self._subscriptions[self._current_subscription_key] = subscription
+        if subscription_key is None:
+            self._current_subscription_key += 1
+            subscription_key = self._current_subscription_key
+        self._subscriptions[subscription_key] = subscription
 
         # send the control request to perform the subscription
         self.logger.debug("Making a new subscription request")
         server_response = await self._control(
             {
-                "LS_Table": self._current_subscription_key,
+                "LS_Table": subscription_key,
                 "LS_op": OP_ADD,
                 "LS_data_adapter": subscription.adapter,
                 "LS_mode": subscription.mode.value,
@@ -201,7 +206,7 @@ class LightstreamerClient:
             self.logger.warning("Subscription error %s", server_response)
             self._metrics.failed_subscribe_count += 1
             raise exceptions.SubscriptionFailed()
-        return self._current_subscription_key
+        return subscription_key 
 
     async def unsubscribe(self, subcription_key: int) -> None:
         """
@@ -236,8 +241,8 @@ class LightstreamerClient:
             self.logger.error("connection failed %s", e)
             return False
         try:
-            for sub in self._subscriptions.values():
-                await self.subscribe(sub)
+            for key, sub in self._subscriptions.items():
+                await self.subscribe(sub, key)
         except Exception as e:
             self.logger.error("subscribe failed %s", e)
             return False
@@ -385,8 +390,8 @@ class LightstreamerClient:
                 )
                 # clear internal data structures for session and subscriptions management
                 self._session_id = None
-                self._subscriptions.clear()
-                self._current_subscription_key = 0
+                # self._subscriptions.clear()
+                # self._current_subscription_key = 0
                 await self._close_stream()
             else:
                 self.logger.debug("Binding to this active session")
